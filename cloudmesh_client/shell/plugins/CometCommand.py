@@ -2,16 +2,7 @@ from cloudmesh_client.shell.console import Console
 from cloudmesh_client.shell.command import command, PluginCommand, CometPluginCommand
 from cloudmesh_client.comet.comet import Comet
 from cloudmesh_client.comet.cluster import Cluster
-
-"""
-
-
-
-            ARGUMENTS:
-                FILENAME  the file to open in the cwd if . is
-                          specified. If file in in cwd
-                          you must specify it with ./FILENAME
-"""
+import hostlist
 
 
 # noinspection PyUnusedLocal,PyBroadException
@@ -30,6 +21,39 @@ class CometCommand(PluginCommand, CometPluginCommand):
         ::
 
             Usage:
+               comet ll [CLUSTERID] [--format=FORMAT]
+               comet cluster [CLUSTERID]
+                             [--format=FORMAT]
+               comet computeset [COMPUTESETID]
+               comet power on CLUSTERID [NODESPARAM]
+                            [--allocation=ALLOCATION]
+                            [--walltime=WALLTIME]
+               comet power (off|reboot|reset|shutdown) CLUSTERID [NODESPARAM]
+               comet console CLUSTERID [COMPUTENODEID]
+
+            Options:
+                --format=FORMAT       Format is either table, json, yaml,
+                                      csv, rest
+                                      [default: table]
+                --allocation=ALLOCATION     Allocation to charge when power on
+                                            node(s)
+                --walltime=WALLTIME     Walltime requested for the node(s).
+                                        Walltime could be an integer value followed
+                                        by a unit (m, h, d, w, for minute, hour, day,
+                                        and week, respectively). E.g., 3h, 2d
+
+            Arguments:
+                CLUSTERID       The assigned name of a cluster, e.g. vc1
+                COMPUTESETID    An integer identifier assigned to a computeset
+                NODESPARAM      Specifying the node/nodes/computeset to act on.
+                                In case of integer, will be intepreted as a computesetid;
+                                in case of a hostlist format, e.g., vm-vc1-[0-3], a group
+                                of nodes; or a single host is also accepptable, 
+                                e.g., vm-vc1-0
+                COMPUTENODEID   A compute node name, e.g., vm-vc1-0
+        """
+        # back up of all the proposed commands/options
+        """
                comet status
                comet tunnel start
                comet tunnel stop
@@ -52,7 +76,10 @@ class CometCommand(PluginCommand, CometPluginCommand):
                comet computeset [COMPUTESETID]
                comet start ID
                comet stop ID
-               comet power (on|off|reboot|reset|shutdown) CLUSTERID [NODESPARAM]
+               comet power on CLUSTERID [NODESPARAM]
+                            [--allocation=ALLOCATION]
+                            [--walltime=WALLTIME]
+               comet power (off|reboot|reset|shutdown) CLUSTERID [NODESPARAM]
                comet console CLUSTERID [COMPUTENODEID]
                comet delete [all]
                               [--user=USER]
@@ -95,6 +122,9 @@ class CometCommand(PluginCommand, CometPluginCommand):
                 --format=FORMAT       Format is either table, json, yaml,
                                       csv, rest
                                       [default: table]
+                --allocation=ALLOCATION     Allocation to charge when power on
+                                            node(s)
+                --walltime=WALLTIME     Walltime requested for the node(s)
 
             Arguments:
                 FILENAME  the file to open in the cwd if . is
@@ -104,6 +134,7 @@ class CometCommand(PluginCommand, CometPluginCommand):
             Opens the given URL in a browser window.
         """
 
+        """
         if not arguments["tunnel"] and Comet.tunnelled and not Comet.is_tunnel():
             Console.error("Please establish a tunnel first with:")
             print
@@ -162,24 +193,9 @@ class CometCommand(PluginCommand, CometPluginCommand):
                     Console.error(
                         "some issue while logging off. Maybe comet not reachable")
 
-        elif arguments["ll"]:
-
-            cluster_id = arguments["CLUSTERID"] or None
-
-            print(Cluster.simple_list(cluster_id, format=output_format))
-
         elif arguments["docs"]:
 
             Comet.docs()
-
-        elif arguments["cluster"]:
-
-            cluster_id = arguments["CLUSTERID"]
-            print(Cluster.list(cluster_id, format=output_format))
-
-        elif arguments["computeset"]:
-            computeset_id = arguments["COMPUTESETID"]
-            print (Cluster.computeset(computeset_id))
 
         elif arguments["info"]:
 
@@ -201,6 +217,33 @@ class CometCommand(PluginCommand, CometPluginCommand):
             print("stop", cluster_id)
             Cluster.stop(cluster_id)
 
+        elif arguments["ll"]:
+
+        """
+        try:
+            logon = Comet.logon()
+            if logon is False:
+                Console.error("Could not logon")
+                return ""
+        except:
+            Console.error("Could not logon")
+
+        output_format = arguments["--format"] or "table"
+
+        if arguments["ll"]:
+            cluster_id = arguments["CLUSTERID"] or None
+
+            print(Cluster.simple_list(cluster_id, format=output_format))
+
+        elif arguments["cluster"]:
+
+            cluster_id = arguments["CLUSTERID"]
+            print(Cluster.list(cluster_id, format=output_format))
+
+        elif arguments["computeset"]:
+            computeset_id = arguments["COMPUTESETID"]
+            print (Cluster.computeset(computeset_id))
+
         elif arguments["power"]:
 
             clusterid = arguments["CLUSTERID"]
@@ -209,6 +252,23 @@ class CometCommand(PluginCommand, CometPluginCommand):
                 fuzzyparam = arguments["NODESPARAM"]
             param = fuzzyparam
 
+            cluster = Cluster.list(clusterid, format='rest')
+            try:
+                allocations = cluster[0]['allocations']
+            except:
+                print (cluster)
+                return ""
+            # for testing only
+            '''
+            allocations = ['sys200',
+                           'sys100',
+                           'sys300',
+                           'sys400',
+                           'sys500',
+                           'sys050',
+                           'tst010',
+                           'tst001']
+            '''
             # no nodes param provided, action on front end
             if not fuzzyparam:
                 subject = "FE"
@@ -221,12 +281,27 @@ class CometCommand(PluginCommand, CometPluginCommand):
                     param = str(param)
                 except ValueError:
                     if '[' in fuzzyparam and ']' in fuzzyparam:
+                        try:
+                            hosts_param = hostlist.expand_hostlist(fuzzyparam)
+                        except hostlist.BadHostlist:
+                            Console.error("Invalid hosts list specified!", traceflag=False)
+                            return ""
                         subject = "HOSTS"
                     else:
                         subject = "HOST"
 
+            walltime = arguments["--walltime"] or None
+            allocation = arguments["--allocation"] or None
             if arguments["on"]:
                 action = "on"
+                walltime = Cluster.convert_to_mins(walltime)
+                if not walltime:
+                    print ("No valid walltime specified. Using system default")
+                if not allocation:
+                    if len(allocations) == 1:
+                        allocation = allocations[0]
+                    else:
+                        allocation = Cluster.display_get_allocation(allocations)
             elif arguments["off"]:
                 action = "off"
             elif arguments["reboot"]:
@@ -237,7 +312,7 @@ class CometCommand(PluginCommand, CometPluginCommand):
                 action = "shutdown"
             else:
                 action = None
-            print (Cluster.power(clusterid, subject, param, action))
+            print (Cluster.power(clusterid, subject, param, action, allocation, walltime))
         elif arguments["console"]:
             clusterid = arguments["CLUSTERID"]
             nodeid = None

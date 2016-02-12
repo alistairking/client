@@ -191,12 +191,14 @@ def copy_files(files_glob, source_dir, dest_dir):
     :return:
     """
     files = glob.iglob(os.path.join(source_dir, files_glob))
-    for file in files:
-        if os.path.isfile(file):
-            shutil.copy2(file, dest_dir)
+    for filename in files:
+        if os.path.isfile(filename):
+            shutil.copy2(filename, dest_dir)
 
 
-def dict_replace(content, replacements={}):
+def dict_replace(content, replacements=None):
+    if replacements is None:
+        replacements = {}
     for key in replacements:
         content = content.replace("\{key\}".format(replacements[key]))
 

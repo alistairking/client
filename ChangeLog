@@ -4,6 +4,51 @@ Changelog
 %%version%% (unreleased)
 ------------------------
 
+- Comet: more cleaning up of code and debug messages. [fugangwang]
+
+- Comet: cleaning up code/docs based on currently implemented features.
+  [fugangwang]
+
+- Updating comet documentation. [fugangwang]
+
+- Comet: enabling powering off/reboot/reset all nodes for an active
+  computeset. [fugangwang]
+
+- Comet: changing docopt. [fugangwang]
+
+- Comet: adding notes about powering off computeset. [fugangwang]
+
+- Comet: updating quickstart guide. [fugangwang]
+
+- Comet: Changing power management of nodes; Adding support of
+  allocation and customized walltime. [fugangwang]
+
+- Chg;dev: pip instalation is not working notice. [Gregor von Laszewski]
+
+2.0.4 (2016-02-11)
+------------------
+
+- 2.0.3. [Gregor von Laszewski]
+
+- Version 2.0.3. [Gregor von Laszewski]
+
+2.0.3 (2016-02-10)
+------------------
+
+- 2.0.2. [Gregor von Laszewski]
+
+- Version 2.0.2. [Gregor von Laszewski]
+
+2.0.2 (2016-02-10)
+------------------
+
+- 2.0.1. [Gregor von Laszewski]
+
+- Version 2.0.1. [Gregor von Laszewski]
+
+2.0.1 (2016-02-10)
+------------------
+
 - 2.0.0. [Gregor von Laszewski]
 
 - Version 2.0.0. [Gregor von Laszewski]

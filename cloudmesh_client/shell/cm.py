@@ -44,6 +44,7 @@ import cloudmesh_client.etc
 
 import cloudmesh_client.shell.plugins
 
+
 class CloudmeshContext(object):
     def __init__(self, **kwargs):
         self.__dict__ = kwargs
@@ -98,7 +99,11 @@ class CloudmeshConsole(cmd.Cmd, PluginCommandClasses):
         line = self.replace_vars(line)
         if line != "hist" and line:
             self._hist += [line.strip()]
+        if line.startswith("!") or line.startswith("shell"):
+            self.do_shell_exec(line[1:])
+            return ""
         cmd, arg, line = self.parseline(line)
+
         if not line:
             return self.emptyline()
         if os.path.isfile(line):
@@ -309,10 +314,10 @@ class CloudmeshConsole(cmd.Cmd, PluginCommandClasses):
                 "name": "cloudmesh_client",
                 "version": str(cloudmesh_client.__version__)
             },
-            #"cloudmesh_base": {
-            #    "name": "cloudmesh_base",
-            #    "version": str(cloudmesh_base.__version__)
-            #},
+            # "cloudmesh_base": {
+            #     "name": "cloudmesh_base",
+            #     "version": str(cloudmesh_base.__version__)
+            # },
             "python": {
                 "name": "python",
                 "version": str(python_version)
@@ -407,25 +412,6 @@ class CloudmeshConsole(cmd.Cmd, PluginCommandClasses):
         """
         print(textwrap.dedent(self.help_help.__doc__))
 
-    '''
-    @command
-    def do_bar(self, arg, arguments):
-        """Usage:
-                bar -f FILE
-                bar FILE
-                bar list
-
-        This command does some useful things.
-
-        Arguments:
-              FILE   a file name
-
-        Options:
-              -f      specify the file
-
-        """
-        print(arguments)
-    '''
 
     def do_exec(self, filename):
         """
@@ -453,7 +439,18 @@ class CloudmeshConsole(cmd.Cmd, PluginCommandClasses):
             Console.error('file "{:}" does not exist.'.format(filename))
             sys.exit()
 
+
     # noinspection PyUnusedLocal
+    def do_shell_exec(self, args):
+        # just ignore arguments and pass on args
+        command = path_expand(args)
+        try:
+            os.system(command)
+        except Exception, e:
+            print (e)
+
+    # noinspection PyUnusedLocal
+    # BUG: this does not for some reason execute the arguments
     @command
     def do_shell(self, args, arguments):
         """
@@ -464,8 +461,11 @@ class CloudmeshConsole(cmd.Cmd, PluginCommandClasses):
             Executes a shell command
         """
         # just ignore arguments and pass on args
-        os.system(args)
-
+        command = path_expand(args)
+        try:
+            os.system(command)
+        except Exception, e:
+            print (e)
     #
     # VAR
     #
@@ -486,6 +486,7 @@ class CloudmeshConsole(cmd.Cmd, PluginCommandClasses):
             newline = newline.replace("$" + v, self.variables[v])
         for v in os.environ:
             newline = newline.replace("$" + v, os.environ[v])
+        newline = path_expand(newline)
         return newline
 
     def _add_variable(self, name, value):
@@ -564,13 +565,13 @@ class CloudmeshConsole(cmd.Cmd, PluginCommandClasses):
                 h = 0
                 for line in self._hist:
                     print ("{}: {}".format(h, self._hist[h]))
-                    h = h + 1
+                    h += 1
                 return ""
 
             elif arguments["last"]:
                 h = len(self._hist)
-                if (h > 1):
-                    self.onecmd(self._hist[h-2])
+                if h > 1:
+                    self.onecmd(self._hist[h - 2])
                 return ""
 
             elif arguments["ID"]:
@@ -646,7 +647,7 @@ def main():
         if arguments["COMMAND"] == '':
             arguments["COMMAND"] = None
 
-
+    # noinspection PySimplifyBooleanCheck
     if arguments['COMMAND'] == []:
         arguments['COMMAND'] = None
 
@@ -656,15 +657,12 @@ def main():
     script = arguments["SCRIPT"]
     command = arguments["COMMAND"]
 
-
-
     context = CloudmeshContext(
         interactive=interactive,
         debug=debug,
         echo=echo,
         splash=splash)
     cmd = CloudmeshConsole(context)
-
 
     if script is not None:
         cmd.do_exec(script)
